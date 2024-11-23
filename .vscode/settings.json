@@ -1,0 +1,5 @@
+{
+    "appService.preDeployTask": "publish-release",
+    "appService.deploySubpath": "Todo/bin/Release/net8.0/publish",
+    "appService.defaultWebAppToDeploy": "None"
+}
