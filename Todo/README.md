@@ -23,7 +23,7 @@ The View is responsible for displaying the todo items to the user. It listens to
 - **renderAddTodoForm()**: Renders the form for adding a new todo item.
 - **renderEditTodoForm(todoItem: TodoItem)**: Renders the form for editing an existing todo item.
 
-#### API(Controller) Methods
+## API(Controller) Methods
 The Controller acts as an intermediary between the Model and the View. It handles user input, updates the Model, and selects the View to display data.
 
 - **GetItemList()**: Retrieves list of Todo items
