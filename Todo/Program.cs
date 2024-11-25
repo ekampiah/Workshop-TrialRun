@@ -1,13 +1,21 @@
 using Microsoft.OpenApi.Services;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using Todo.Model;
+using Todo.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
+Dictionary<string, Item> Items = new Dictionary<string, Item>();
+var itemList = Enumerable.Range(1, 5).Select(index => new Item($"Item {index}", $"Description for item {index}"));
+foreach(var item in itemList){
+    Items.Add(item.Id, item);
+}
+
 // Add services to the container.
-
+builder.Services.AddSingleton<Dictionary<string, Item>>(Items);
+builder.Services.AddAutoMapper(typeof(MappingProfiles).Assembly);
 builder.Services.AddControllersWithViews();
-
 // add swagger
 builder.Services.AddSwaggerGen(options => {
     options.SwaggerDoc("v1", new OpenApiInfo
