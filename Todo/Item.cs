@@ -9,7 +9,7 @@ public class Item {
 
     public bool IsCompleted { get; set; }
 
-    public Item(string title, string description)
+    public Item(string title, string? description)
     {
         Id = Guid.NewGuid().ToString();
         Title = title;

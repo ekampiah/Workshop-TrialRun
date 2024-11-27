@@ -1,26 +1,176 @@
-import React, { Component } from 'react';
+import { useCallback, useEffect, useState } from "react";
+import {
+  DetailsList,
+  DetailsListLayoutMode,
+  IColumn,
+} from "@fluentui/react/lib/DetailsList";
+import { Item } from "../model/Item";
+import {
+  Checkbox,
+  DefaultButton,
+  Panel,
+  PanelType,
+  PrimaryButton,
+} from "@fluentui/react";
+import axios, { AxiosResponse } from "axios";
+import { useForm } from "react-hook-form";
 
-export class Home extends Component {
-  static displayName = Home.name;
+export const Home = () => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    defaultValues: { title: "", description: "" },
+  });
 
-  render() {
-    return (
-      <div>
-        <h1>Hello, world!</h1>
-        <p>Welcome to your new single-page application, built with:</p>
-        <ul>
-          <li><a href='https://get.asp.net/'>ASP.NET Core</a> and <a href='https://msdn.microsoft.com/en-us/library/67ef8sbd.aspx'>C#</a> for cross-platform server-side code</li>
-          <li><a href='https://facebook.github.io/react/'>React</a> for client-side code</li>
-          <li><a href='http://getbootstrap.com/'>Bootstrap</a> for layout and styling</li>
-        </ul>
-        <p>To help you get started, we have also set up:</p>
-        <ul>
-          <li><strong>Client-side navigation</strong>. For example, click <em>Counter</em> then <em>Back</em> to return here.</li>
-          <li><strong>Development server integration</strong>. In development mode, the development server from <code>create-react-app</code> runs in the background automatically, so your client-side resources are dynamically built on demand and the page refreshes when you modify any file.</li>
-          <li><strong>Efficient production builds</strong>. In production mode, development-time features are disabled, and your <code>dotnet publish</code> configuration produces minified, efficiently bundled JavaScript files.</li>
-        </ul>
-        <p>The <code>ClientApp</code> subdirectory is a standard React application based on the <code>create-react-app</code> template. If you open a command prompt in that directory, you can run <code>npm</code> commands such as <code>npm test</code> or <code>npm install</code>.</p>
-      </div>
-    );
-  }
-}
+  useEffect(() => {
+    if (!!items.length) return;
+    console.log("loading items");
+
+    axios
+      .get(process.env.REACT_APP_API_URL + "/todos")
+      .then((response: AxiosResponse<Item[]>) => {
+        setItems(response.data);
+      })
+      .catch(console.log);
+  }, [items]);
+
+  const updateItemCompleted = useCallback(
+    (id: string, checked: boolean) => {
+      var index = items.findIndex((i) => i.id === id);
+      if (index < 0) return;
+
+      axios
+        .put(process.env.REACT_APP_API_URL + `/todos/${id}`, {
+          ...items[index],
+          isCompleted: checked,
+        })
+        .then((response: AxiosResponse<Item>) => {
+          items[index] = response.data;
+        })
+        .catch(console.log);
+    },
+    [items]
+  );
+
+  const columns: IColumn[] = [
+    {
+      key: "indexColumn",
+      name: "Index",
+      ariaLabel: "Column operations for File type, Press to sort on File type",
+      isIconOnly: true,
+      minWidth: 16,
+      maxWidth: 16,
+      onRender: (item: Item, index: number | undefined) => (
+        <p>{!index || index === 0 ? 1 : index + 1}</p>
+      ),
+    },
+    {
+      key: "titleColumn",
+      name: "Title",
+      fieldName: "title",
+      minWidth: 16,
+      maxWidth: 150,
+    },
+    {
+      key: "descriptionColumn",
+      name: "Description",
+      fieldName: "description",
+      minWidth: 16,
+      maxWidth: 300,
+    },
+    {
+      key: "completedColumn",
+      name: "Completed",
+      fieldName: "isCompleted",
+      minWidth: 16,
+      maxWidth: 100,
+      onRender: (item: Item) => (
+        <Checkbox
+          defaultChecked={item.isCompleted}
+          onChange={(event, checked?: boolean) =>
+            updateItemCompleted(item.id, !!checked)
+          }
+        />
+      ),
+    },
+    {
+      key: "deletedColumn",
+      name: "Deleted",
+      minWidth: 16,
+      maxWidth: 16,
+      onRender: (item: Item) => (
+        <PrimaryButton onClick={() => deleteItem(item.id)} text="Delete" />
+      ),
+    },
+  ];
+
+  const addNewItem = useCallback(
+    (data: { title?: string; description?: string }) => {
+      axios
+        .post(process.env.REACT_APP_API_URL + "/todos", data)
+        .then((response: AxiosResponse<Item>) => {
+          setItems((prevItems) => [...prevItems, response.data]);
+          setIsPanelOpen(false);
+          reset();
+        })
+        .catch(console.log);
+    },
+    [items, isPanelOpen, setItems, setIsPanelOpen]
+  );
+
+  const deleteItem = useCallback((id: string) => {
+    axios
+      .delete(process.env.REACT_APP_API_URL + `/todos/${id}`)
+      .then((response: AxiosResponse<boolean>) => {
+        if (response.data) {
+          setItems(items.filter((item) => item.id !== id));
+          console.log("Successfully deleted");
+        } else console.log("Delete unsucessful");
+      })
+      .catch(console.log);
+  }, []);
+
+  return (
+    <div>
+      <h1>Todos</h1>
+      <DefaultButton text="Add new item" onClick={() => setIsPanelOpen(true)} />
+      <DetailsList
+        items={items}
+        columns={columns}
+        layoutMode={DetailsListLayoutMode.justified}
+        isHeaderVisible={true}
+        enterModalSelectionOnTouch={true}
+        ariaLabelForSelectionColumn="Toggle selection"
+        ariaLabelForSelectAllCheckbox="Toggle selection for all items"
+        checkButtonAriaLabel="select row"
+      />
+      <Panel
+        isOpen={isPanelOpen}
+        onDismiss={() => setIsPanelOpen(false)}
+        type={PanelType.medium}
+        closeButtonAriaLabel="Close"
+        headerText="Add new item"
+      >
+        <form onSubmit={handleSubmit(addNewItem)}>
+          <input
+            {...register("title", { required: "Title is required" })}
+            placeholder="Title"
+          />
+          <p>{errors.title?.message}</p>
+          <textarea
+            {...register("description")}
+            rows={4}
+            placeholder="Description"
+          />
+          <p>{errors.description?.message}</p>
+          <input type="submit" />
+        </form>
+      </Panel>
+    </div>
+  );
+};

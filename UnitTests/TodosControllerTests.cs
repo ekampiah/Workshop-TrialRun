@@ -9,7 +9,10 @@ namespace UnitTests
     [TestClass]
     public class TodosControllerTest
     {
+#pragma warning disable CS8618
         private TodosController _controller;
+#pragma warning restore CS8618
+
         private Dictionary<string, Item> _items = [];
 
         [TestInitialize]
@@ -73,7 +76,7 @@ namespace UnitTests
         public void AddItem_AddsNewItem()
         {
             // Act
-            var result = _controller.AddItem("New Title", "New Description");
+            var result = _controller.AddItem(new NewItemDto("New Title", "New Description"));
 
             // Assert
             var okResult = result.Result as OkObjectResult;
