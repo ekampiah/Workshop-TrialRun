@@ -1,19 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  DetailsList,
-  DetailsListLayoutMode,
-  IColumn,
-} from "@fluentui/react/lib/DetailsList";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { Item } from "../model/Item";
-import {
-  Checkbox,
-  DefaultButton,
-  Panel,
-  PanelType,
-  PrimaryButton,
-} from "@fluentui/react";
 import axios, { AxiosResponse } from "axios";
 import { useForm } from "react-hook-form";
+import {
+  Button,
+  Checkbox,
+  CheckboxOnChangeData,
+  createTableColumn,
+  DataGrid,
+  DataGridBody,
+  DataGridCell,
+  DataGridHeader,
+  DataGridHeaderCell,
+  DataGridRow,
+  Drawer,
+  TableCellLayout,
+  TableColumnDefinition,
+} from "@fluentui/react-components";
 
 export const Home = () => {
   const [items, setItems] = useState<Item[]>([]);
@@ -57,56 +60,63 @@ export const Home = () => {
     [items]
   );
 
-  const columns: IColumn[] = [
-    {
-      key: "indexColumn",
-      name: "Index",
-      ariaLabel: "Column operations for File type, Press to sort on File type",
-      isIconOnly: true,
-      minWidth: 16,
-      maxWidth: 16,
-      onRender: (item: Item, index: number | undefined) => (
-        <p>{!index || index === 0 ? 1 : index + 1}</p>
-      ),
-    },
-    {
-      key: "titleColumn",
-      name: "Title",
-      fieldName: "title",
-      minWidth: 16,
-      maxWidth: 150,
-    },
-    {
-      key: "descriptionColumn",
-      name: "Description",
-      fieldName: "description",
-      minWidth: 16,
-      maxWidth: 300,
-    },
-    {
-      key: "completedColumn",
-      name: "Completed",
-      fieldName: "isCompleted",
-      minWidth: 16,
-      maxWidth: 100,
-      onRender: (item: Item) => (
-        <Checkbox
-          defaultChecked={item.isCompleted}
-          onChange={(event, checked?: boolean) =>
-            updateItemCompleted(item.id, !!checked)
-          }
-        />
-      ),
-    },
-    {
-      key: "deletedColumn",
-      name: "Deleted",
-      minWidth: 16,
-      maxWidth: 16,
-      onRender: (item: Item) => (
-        <PrimaryButton onClick={() => deleteItem(item.id)} text="Delete" />
-      ),
-    },
+  const columns: TableColumnDefinition<Item>[] = [
+    createTableColumn<Item>({
+      columnId: "title",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Title";
+      },
+      renderCell: (item) => {
+        return <TableCellLayout>{item.title}</TableCellLayout>;
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "description",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Description";
+      },
+      renderCell: (item) => {
+        return <TableCellLayout>{item.description}</TableCellLayout>;
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "completed",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Completed";
+      },
+      renderCell: (item) => {
+        return (
+          <Checkbox
+            defaultChecked={item.isCompleted}
+            onChange={(
+              ev: ChangeEvent<HTMLInputElement>,
+              data: CheckboxOnChangeData
+            ) => updateItemCompleted(item.id, !!data.checked)}
+          />
+        );
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "delete",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "";
+      },
+      renderCell: (item) => {
+        return <Button onClick={() => deleteItem(item.id)}>Delete</Button>;
+      },
+    }),
   ];
 
   const addNewItem = useCallback(
@@ -120,42 +130,61 @@ export const Home = () => {
         })
         .catch(console.log);
     },
-    [items, isPanelOpen, setItems, setIsPanelOpen]
+    [setItems, setIsPanelOpen, reset]
   );
 
-  const deleteItem = useCallback((id: string) => {
-    axios
-      .delete(process.env.REACT_APP_API_URL + `/todos/${id}`)
-      .then((response: AxiosResponse<boolean>) => {
-        if (response.data) {
-          setItems(items.filter((item) => item.id !== id));
-          console.log("Successfully deleted");
-        } else console.log("Delete unsucessful");
-      })
-      .catch(console.log);
-  }, []);
+  const deleteItem = useCallback(
+    (id: string) => {
+      axios
+        .delete(process.env.REACT_APP_API_URL + `/todos/${id}`)
+        .then((response: AxiosResponse<boolean>) => {
+          if (response.data) {
+            setItems(items.filter((item) => item.id !== id));
+            console.log("Successfully deleted");
+          } else console.log("Delete unsucessful");
+        })
+        .catch(console.log);
+    },
+    [items, setItems]
+  );
 
   return (
     <div>
       <h1>Todos</h1>
-      <DefaultButton text="Add new item" onClick={() => setIsPanelOpen(true)} />
-      <DetailsList
-        items={items}
-        columns={columns}
-        layoutMode={DetailsListLayoutMode.justified}
-        isHeaderVisible={true}
-        enterModalSelectionOnTouch={true}
-        ariaLabelForSelectionColumn="Toggle selection"
-        ariaLabelForSelectAllCheckbox="Toggle selection for all items"
-        checkButtonAriaLabel="select row"
-      />
-      <Panel
-        isOpen={isPanelOpen}
-        onDismiss={() => setIsPanelOpen(false)}
-        type={PanelType.medium}
-        closeButtonAriaLabel="Close"
-        headerText="Add new item"
+      <Button onClick={() => setIsPanelOpen(true)}>Add new item</Button>
+      <DataGrid items={items} columns={columns}>
+        <DataGridHeader>
+          <DataGridRow
+            selectionCell={{
+              checkboxIndicator: { "aria-label": "Select all rows" },
+            }}
+          >
+            {({ renderHeaderCell }) => (
+              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+            )}
+          </DataGridRow>
+        </DataGridHeader>
+        <DataGridBody<Item>>
+          {({ item, rowId }) => (
+            <DataGridRow<Item>
+              key={rowId}
+              selectionCell={{
+                checkboxIndicator: { "aria-label": "Select row" },
+              }}
+            >
+              {({ renderCell }) => (
+                <DataGridCell>{renderCell(item)}</DataGridCell>
+              )}
+            </DataGridRow>
+          )}
+        </DataGridBody>
+      </DataGrid>
+      <Drawer
+        open={isPanelOpen}
+        onOpenChange={(_, { open }) => setIsPanelOpen(open)}
+        type="overlay"
       >
+        <h1>Add new item</h1>
         <form onSubmit={handleSubmit(addNewItem)}>
           <input
             {...register("title", { required: "Title is required" })}
@@ -170,7 +199,7 @@ export const Home = () => {
           <p>{errors.description?.message}</p>
           <input type="submit" />
         </form>
-      </Panel>
+      </Drawer>
     </div>
   );
 };
