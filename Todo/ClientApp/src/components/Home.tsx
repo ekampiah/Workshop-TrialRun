@@ -1,26 +1,205 @@
-import React, { Component } from 'react';
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
+import { Item } from "../model/Item";
+import axios, { AxiosResponse } from "axios";
+import { useForm } from "react-hook-form";
+import {
+  Button,
+  Checkbox,
+  CheckboxOnChangeData,
+  createTableColumn,
+  DataGrid,
+  DataGridBody,
+  DataGridCell,
+  DataGridHeader,
+  DataGridHeaderCell,
+  DataGridRow,
+  Drawer,
+  TableCellLayout,
+  TableColumnDefinition,
+} from "@fluentui/react-components";
 
-export class Home extends Component {
-  static displayName = Home.name;
+export const Home = () => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    defaultValues: { title: "", description: "" },
+  });
 
-  render() {
-    return (
-      <div>
-        <h1>Hello, world!</h1>
-        <p>Welcome to your new single-page application, built with:</p>
-        <ul>
-          <li><a href='https://get.asp.net/'>ASP.NET Core</a> and <a href='https://msdn.microsoft.com/en-us/library/67ef8sbd.aspx'>C#</a> for cross-platform server-side code</li>
-          <li><a href='https://facebook.github.io/react/'>React</a> for client-side code</li>
-          <li><a href='http://getbootstrap.com/'>Bootstrap</a> for layout and styling</li>
-        </ul>
-        <p>To help you get started, we have also set up:</p>
-        <ul>
-          <li><strong>Client-side navigation</strong>. For example, click <em>Counter</em> then <em>Back</em> to return here.</li>
-          <li><strong>Development server integration</strong>. In development mode, the development server from <code>create-react-app</code> runs in the background automatically, so your client-side resources are dynamically built on demand and the page refreshes when you modify any file.</li>
-          <li><strong>Efficient production builds</strong>. In production mode, development-time features are disabled, and your <code>dotnet publish</code> configuration produces minified, efficiently bundled JavaScript files.</li>
-        </ul>
-        <p>The <code>ClientApp</code> subdirectory is a standard React application based on the <code>create-react-app</code> template. If you open a command prompt in that directory, you can run <code>npm</code> commands such as <code>npm test</code> or <code>npm install</code>.</p>
-      </div>
-    );
-  }
-}
+  useEffect(() => {
+    if (!!items.length) return;
+    console.log("loading items");
+
+    axios
+      .get(process.env.REACT_APP_API_URL + "/todos")
+      .then((response: AxiosResponse<Item[]>) => {
+        setItems(response.data);
+      })
+      .catch(console.log);
+  }, [items]);
+
+  const updateItemCompleted = useCallback(
+    (id: string, checked: boolean) => {
+      var index = items.findIndex((i) => i.id === id);
+      if (index < 0) return;
+
+      axios
+        .put(process.env.REACT_APP_API_URL + `/todos/${id}`, {
+          ...items[index],
+          isCompleted: checked,
+        })
+        .then((response: AxiosResponse<Item>) => {
+          items[index] = response.data;
+        })
+        .catch(console.log);
+    },
+    [items]
+  );
+
+  const columns: TableColumnDefinition<Item>[] = [
+    createTableColumn<Item>({
+      columnId: "title",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Title";
+      },
+      renderCell: (item) => {
+        return <TableCellLayout>{item.title}</TableCellLayout>;
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "description",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Description";
+      },
+      renderCell: (item) => {
+        return <TableCellLayout>{item.description}</TableCellLayout>;
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "completed",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "Completed";
+      },
+      renderCell: (item) => {
+        return (
+          <Checkbox
+            defaultChecked={item.isCompleted}
+            onChange={(
+              ev: ChangeEvent<HTMLInputElement>,
+              data: CheckboxOnChangeData
+            ) => updateItemCompleted(item.id, !!data.checked)}
+          />
+        );
+      },
+    }),
+    createTableColumn<Item>({
+      columnId: "delete",
+      compare: (a, b) => {
+        return a.title.localeCompare(b.title);
+      },
+      renderHeaderCell: () => {
+        return "";
+      },
+      renderCell: (item) => {
+        return <Button onClick={() => deleteItem(item.id)}>Delete</Button>;
+      },
+    }),
+  ];
+
+  const addNewItem = useCallback(
+    (data: { title?: string; description?: string }) => {
+      axios
+        .post(process.env.REACT_APP_API_URL + "/todos", data)
+        .then((response: AxiosResponse<Item>) => {
+          setItems((prevItems) => [...prevItems, response.data]);
+          setIsPanelOpen(false);
+          reset();
+        })
+        .catch(console.log);
+    },
+    [setItems, setIsPanelOpen, reset]
+  );
+
+  const deleteItem = useCallback(
+    (id: string) => {
+      axios
+        .delete(process.env.REACT_APP_API_URL + `/todos/${id}`)
+        .then((response: AxiosResponse<boolean>) => {
+          if (response.data) {
+            setItems(items.filter((item) => item.id !== id));
+            console.log("Successfully deleted");
+          } else console.log("Delete unsucessful");
+        })
+        .catch(console.log);
+    },
+    [items, setItems]
+  );
+
+  return (
+    <div>
+      <h1>Todos</h1>
+      <Button onClick={() => setIsPanelOpen(true)}>Add new item</Button>
+      <DataGrid items={items} columns={columns}>
+        <DataGridHeader>
+          <DataGridRow
+            selectionCell={{
+              checkboxIndicator: { "aria-label": "Select all rows" },
+            }}
+          >
+            {({ renderHeaderCell }) => (
+              <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
+            )}
+          </DataGridRow>
+        </DataGridHeader>
+        <DataGridBody<Item>>
+          {({ item, rowId }) => (
+            <DataGridRow<Item>
+              key={rowId}
+              selectionCell={{
+                checkboxIndicator: { "aria-label": "Select row" },
+              }}
+            >
+              {({ renderCell }) => (
+                <DataGridCell>{renderCell(item)}</DataGridCell>
+              )}
+            </DataGridRow>
+          )}
+        </DataGridBody>
+      </DataGrid>
+      <Drawer
+        open={isPanelOpen}
+        onOpenChange={(_, { open }) => setIsPanelOpen(open)}
+        type="overlay"
+      >
+        <h1>Add new item</h1>
+        <form onSubmit={handleSubmit(addNewItem)}>
+          <input
+            {...register("title", { required: "Title is required" })}
+            placeholder="Title"
+          />
+          <p>{errors.title?.message}</p>
+          <textarea
+            {...register("description")}
+            rows={4}
+            placeholder="Description"
+          />
+          <p>{errors.description?.message}</p>
+          <input type="submit" />
+        </form>
+      </Drawer>
+    </div>
+  );
+};

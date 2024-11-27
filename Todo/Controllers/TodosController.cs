@@ -33,7 +33,7 @@ public class TodosController : ControllerBase{
     /// <param name="id">ID of target item to find</param>
     /// <returns>Item if it exists, 404 error otherwise</returns>
     [HttpGet]
-    [Route("/{id}")]
+    [Route("{id}")]
     [Produces("application/json")]
     public ActionResult<Item> GetItem(string id){
         var containsItem = Items.TryGetValue(id, out var item);
@@ -46,13 +46,15 @@ public class TodosController : ControllerBase{
     /// <summary>
     /// Add a new item
     /// </summary>
-    /// <param name="title">The item title</param>
-    /// <param name="description">The item description</param>
+    /// <param name="newItem">Dto containing title and description of item to create</param>
     /// <returns>The newly added item</returns>
     [HttpPost]
     [Produces("application/json")]
-    public ActionResult<Item> AddItem(string title, string description){
-        var item = new Item(title, description);
+    public ActionResult<Item> AddItem([FromBody] NewItemDto newItem){
+        if(string.IsNullOrEmpty(newItem.Title)){
+            return BadRequest("Missing title");
+        }
+        var item = new Item(newItem.Title, newItem.Description);
         Items.Add(item.Id, item);
         return Ok(item);
     }
@@ -64,7 +66,7 @@ public class TodosController : ControllerBase{
     /// <param name="item">Object with updated properties</param>
     /// <returns>Updated item if found and updated, error response otherwise</returns>
     [HttpPut]
-    [Route("/{id}")]
+    [Route("{id}")]
     [Produces("application/json")]
     public ActionResult<Item> Update(string id, [FromBody] Item item){
         var found = Items.TryGetValue(id, out var dbItem);
@@ -84,7 +86,7 @@ public class TodosController : ControllerBase{
     /// <param name="id">Identifier of item to delete</param>
     /// <returns>True if item was successfully deleted</returns>
     [HttpDelete]
-    [Route("/{id}")]
+    [Route("{id}")]
     public ActionResult<bool> Delete(string id){
         var found = Items.TryGetValue(id, out var item);
         if(!found){
